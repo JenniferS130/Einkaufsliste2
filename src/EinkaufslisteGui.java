@@ -178,7 +178,7 @@ public class EinkaufslisteGui extends Application {
 		VBox schrittNode = new VBox(zubereitung, schrittInfo);
 
 		Button addRecipe = new Button("Rezept hinzufügen");
-		addRecipe.setOnAction(event -> );
+		addRecipe.setOnAction(event -> {});
 
 
 		rezepteFenster.getChildren().addAll(rezeptName, rezeptEintrag, zutatNode, schrittNode);
