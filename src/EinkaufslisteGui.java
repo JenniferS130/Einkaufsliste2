@@ -6,16 +6,17 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
@@ -157,9 +158,7 @@ public class EinkaufslisteGui extends Application {
 		yourList.setOnAction(e -> mainMenu.setCenter(table));
 		delete.setOnAction(e -> deleteFromList(list));
 
-		yourRecipes.setOnAction(actionEvent -> {
-			mainMenu.setCenter(buildCustomRecipeList());
-		});
+		yourRecipes.setOnAction(actionEvent -> mainMenu.setCenter(buildCustomRecipeList()));
 
 		VBox rezepteFenster = buildNewRecipe();
 		newRecipe.setOnAction(e -> mainMenu.setCenter(rezepteFenster));
@@ -283,8 +282,8 @@ public class EinkaufslisteGui extends Application {
 	private VBox buildNewRecipe() {
 		//Aufbau Rezepte Eintragen
 		VBox               rezepteFenster = new VBox(5);
-		ArrayList<Zutat>   zutaten        = new ArrayList<Zutat>();
-		ArrayList<Schritt> schritte       = new ArrayList<Schritt>();
+		ArrayList<Zutat>   zutaten        = new ArrayList<>();
+		ArrayList<Schritt> schritte       = new ArrayList<>();
 
 		Label     rezeptName    = new Label("Rezept Name:");
 		TextField rezeptEintrag = new TextField();
