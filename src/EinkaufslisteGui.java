@@ -1,28 +1,38 @@
 import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.scene.layout.BorderPane;
 import javafx.stage.StageStyle;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
 
 public class EinkaufslisteGui extends Application {
 
 	Stage  window;
 	Scene  sceneShopping;
 	Button eingang;
-	private double xOffset;
-	private double yOffset;
-	private Button newList;
-	private Button yourList;
-	private Button yourRecipes;
-	private Button newRecipe;
+	private double            xOffset;
+	private double            yOffset;
+	private Button            newList;
+	private Button            yourList;
+	private Button            yourRecipes;
+	private Button            newRecipe;
+	private ArrayList<Recipe> customRezepte = new ArrayList<>();
+	private BorderPane        mainMenu;
+	private ListView<String>  list;
 
 
 	public static void main(String[] args) {
@@ -46,18 +56,18 @@ public class EinkaufslisteGui extends Application {
 
 		//Fenster Aufbau Main
 		HBox box = new HBox(5);
-		box.setPadding(new Insets(50, 50, 50, 55));
+		box.setPadding(new Insets(50, 50, 50, 50));
 		box.getChildren().addAll(buttonBar);
 		box.setStyle("-fx-background-color: BEIGE");
 
 
-		BorderPane mainMenu = new BorderPane();
+		mainMenu = new BorderPane();
 		mainMenu.setPrefSize(800, 400);
 		mainMenu.setLeft(getShoppingMain(mainMenu));
 
 
 		//Speichern der Methoden in neue Comboboxen für den Aufruf der Items
-		ListView<String> list = new ListView<>();
+		list = new ListView<>();
 
 		ComboBox<String> fruitBox = buildItemComBox("Fruits",
 													new String[]{"Apple", "Banana", "Orange", "Strawberry", "Mango",
@@ -97,7 +107,7 @@ public class EinkaufslisteGui extends Application {
 
 		//Aufbau des Item Selection Fenster
 		VBox shoppingItems = new VBox(5);
-		shoppingItems.setPadding(new Insets(0, 50, 50, 200));
+		shoppingItems.setPadding(new Insets(0, 50, 50, 50));
 		shoppingItems.setSpacing(10);
 		HBox fruitsList = new HBox(fruitBox, submitFruits);
 		fruitsList.setSpacing(5);
@@ -145,45 +155,16 @@ public class EinkaufslisteGui extends Application {
 
 		table.getChildren().addAll(list, delete);
 		yourList.setOnAction(e -> mainMenu.setCenter(table));
-
-		//Delete Button
 		delete.setOnAction(e -> deleteFromList(list));
 
-		//Aufbau Rezepte Eintragen
-		VBox               rezepteFenster = new VBox(5);
-		ArrayList<Zutat>   zutaten        = new ArrayList<Zutat>();
-		ArrayList<Schritt> schritte       = new ArrayList<Schritt>();
-
-		Label     rezeptName    = new Label("Rezept Name:");
-		TextField rezeptEintrag = new TextField();
-
-		Label     zutatLabel = new Label("Zutat");
-		TextField zutat      = new TextField();
-		TextField menge      = new TextField();
-		Button    neueZutat  = new Button("Add");
-		neueZutat.setOnAction(event -> zutaten.add(new Zutat(zutat.getText(), menge.getText())));
-		HBox zutatInfos = new HBox(zutat, menge, neueZutat);
-		VBox zutatNode  = new VBox(zutatLabel, zutatInfos);
-
-
-		Label     zubereitung   = new Label("Zubereitung");
-		Label     schrittNummer = new Label("1");
-		TextField schritt       = new TextField();
-		Button    neuerSchritt  = new Button("Add");
-		neuerSchritt.setOnAction(event -> {
-			schritte.add(new Schritt(Integer.parseInt(schrittNummer.getText()), schritt.getText()));
-			schrittNummer.setText(String.valueOf(Integer.parseInt(schrittNummer.getText()) + 1));
+		yourRecipes.setOnAction(actionEvent -> {
+			mainMenu.setCenter(buildCustomRecipeList());
 		});
-		HBox schrittInfo = new HBox(schrittNummer, schritt, neuerSchritt);
-		VBox schrittNode = new VBox(zubereitung, schrittInfo);
 
-		Button addRecipe = new Button("Rezept hinzufügen");
-		addRecipe.setOnAction(event -> {});
-
-
-		rezepteFenster.getChildren().addAll(rezeptName, rezeptEintrag, zutatNode, schrittNode);
+		VBox rezepteFenster = buildNewRecipe();
 		newRecipe.setOnAction(e -> mainMenu.setCenter(rezepteFenster));
 
+		loadCustomRecipes();
 
 		sceneShopping = prepareScene(mainMenu);
 		mainMenu.setStyle("-fx-background-color: BEIGE");
@@ -194,6 +175,191 @@ public class EinkaufslisteGui extends Application {
 		window.setTitle("Shopping Helper");
 		window.setScene(scene);
 		window.show();
+
+
+	}
+
+	private void loadCustomRecipes() {
+		try {
+			File    file    = new File("rezepte.txt");
+			Scanner scanner = new Scanner(file);
+
+			while(scanner.hasNextLine()) {
+				String line;
+
+				try {
+					line = scanner.nextLine();
+				} catch(NoSuchElementException e) {
+					break;
+				}
+
+				String[] strings = line.split(";");
+
+				String rezeptName = strings[0];
+
+				ArrayList<Zutat> zutaten = new ArrayList<>();
+				for(String tmpString : strings[1].split("\\|")) {
+					String[] tmpSplitString = tmpString.split(",");
+					zutaten.add(new Zutat(tmpSplitString[0], tmpSplitString[1]));
+				}
+
+				ArrayList<Schritt> schritt = new ArrayList<>();
+				int                i       = 1;
+				for(String tmpString : strings[2].split("\\|")) {
+					schritt.add(new Schritt(i, tmpString));
+					i++;
+				}
+				customRezepte.add(new Recipe(rezeptName, zutaten, schritt));
+			}
+
+		} catch(IOException e) {
+			System.out.println(e);
+		}
+	}
+
+	private VBox buildCustomRecipeList() {
+		if(customRezepte.size() == 0)
+			return null;
+
+		VBox vBox = new VBox();
+		vBox.setMaxWidth(290);
+		for(Recipe recipe : customRezepte) {
+			Label name = new Label(recipe.getRezeptTitel());
+			name.setPrefWidth(150);
+			Label zutaten = new Label(String.valueOf(recipe.getZutaten().size()));
+			zutaten.setPrefWidth(50);
+			Label schritte = new Label(String.valueOf(recipe.getSchritte().size()));
+			schritte.setPrefWidth(50);
+			HBox hBox = new HBox(name, zutaten, schritte);
+			hBox.setOnMouseClicked(mouseEvent -> mainMenu.setCenter(buildRecipeScene(recipe)));
+			hBox.setStyle("-fx-background-color:#FFFFFF;-fx-border-width:0.5;-fx-border-style:solid");
+
+			Button addIngredients = new Button("Add");
+			addIngredients.setOnAction(actionEvent -> addListIngredient(recipe));
+			addIngredients.setAlignment(Pos.CENTER_RIGHT);
+			hBox.getChildren().add(addIngredients);
+
+			vBox.getChildren().add(hBox);
+		}
+
+		vBox.setSpacing(5);
+		return vBox;
+	}
+
+	private void addListIngredient(Recipe recipe) {
+		for(Zutat zutat : recipe.getZutaten()) {
+			list.getItems().add(zutat.zutat + " " + zutat.menge);
+		}
+	}
+
+	private VBox buildRecipeScene(Recipe recipe) {
+		Label rezeptTitel = new Label(recipe.getRezeptTitel());
+		rezeptTitel.setStyle("-fx-font-size:14;-fx-font-weight:bold");
+
+
+		Label zutaten = new Label("Zutaten:");
+		zutaten.setStyle("-fx-font-weight:bold");
+		VBox vBox = new VBox(rezeptTitel, zutaten);
+		for(Zutat zutat : recipe.getZutaten()) {
+			vBox.getChildren().add(new Label(zutat.zutat + " " + zutat.menge));
+		}
+
+		Label schritte = new Label("Schritte:");
+		schritte.setStyle("-fx-font-weight:bold");
+		vBox.getChildren().add(schritte);
+		for(Schritt schritt : recipe.getSchritte()) {
+			vBox.getChildren().add(new Label(schritt.nummer + ". " + schritt.beschreibung));
+		}
+
+		Button addIngredient = new Button("Add");
+		addIngredient.setOnAction(actionEvent -> addListIngredient(recipe));
+		vBox.getChildren().add(addIngredient);
+		vBox.setPadding(new Insets(0, 0, 0, 50));
+		vBox.setSpacing(5);
+
+		return vBox;
+	}
+
+	private VBox buildNewRecipe() {
+		//Aufbau Rezepte Eintragen
+		VBox               rezepteFenster = new VBox(5);
+		ArrayList<Zutat>   zutaten        = new ArrayList<Zutat>();
+		ArrayList<Schritt> schritte       = new ArrayList<Schritt>();
+
+		Label     rezeptName    = new Label("Rezept Name:");
+		TextField rezeptEintrag = new TextField();
+
+		Label     zutatLabel = new Label("Zutat / Menge");
+		TextField zutat      = new TextField();
+
+		TextField menge     = new TextField();
+		Button    neueZutat = new Button("Add");
+		neueZutat.setOnAction(event -> {
+			zutaten.add(new Zutat(zutat.getText(), menge.getText()));
+			zutat.setText("");
+			menge.setText("");
+		});
+		HBox zutatInfos = new HBox(zutat, menge, neueZutat);
+		VBox zutatNode  = new VBox(zutatLabel, zutatInfos);
+
+		Label zubereitung = new Label("Zubereitung");
+
+		Label     schrittNummer = new Label("1");
+		TextField schritt       = new TextField();
+		Button    neuerSchritt  = new Button("Add");
+		neuerSchritt.setOnAction(event -> {
+			schritte.add(new Schritt(Integer.parseInt(schrittNummer.getText()), schritt.getText()));
+			schrittNummer.setText(String.valueOf(Integer.parseInt(schrittNummer.getText()) + 1));
+			schritt.setText("");
+		});
+		HBox schrittInfo = new HBox(schrittNummer, schritt, neuerSchritt);
+		VBox schrittNode = new VBox(zubereitung, schrittInfo);
+
+		Button addRecipe = new Button("Rezept hinzufügen");
+		addRecipe.setOnAction(event -> {
+			Recipe recipe = new Recipe(rezeptEintrag.getText(), (ArrayList<Zutat>)zutaten.clone(),
+									   (ArrayList<Schritt>)schritte.clone());
+			customRezepte.add(recipe);
+			writeNewRecipe(recipe);
+
+			rezeptEintrag.setText("");
+			zutat.setText("");
+			menge.setText("");
+			schritt.setText("");
+			schrittNummer.setText("1");
+
+			zutaten.clear();
+			schritte.clear();
+		});
+
+
+		rezepteFenster.getChildren().addAll(rezeptName, rezeptEintrag, zutatNode, schrittNode, addRecipe);
+		rezepteFenster.setPadding(new Insets(0, 0, 0, 50));
+		return rezepteFenster;
+	}
+
+	private void writeNewRecipe(Recipe recipe) {
+
+		String line = "";
+
+		line += recipe.getRezeptTitel() + ";";
+
+		for(Zutat zutat : recipe.getZutaten()) {
+			line += zutat.zutat + "," + zutat.menge + "|";
+		}
+		line += ";";
+
+		for(Schritt schritt : recipe.getSchritte()) {
+			line += schritt.beschreibung + "|";
+		}
+
+		try {
+			FileWriter file = new FileWriter("rezepte.txt", true);
+			file.write(line + "\n");
+			file.close();
+		} catch(IOException e) {
+			System.out.println(e);
+		}
 
 
 	}
@@ -273,6 +439,7 @@ public class EinkaufslisteGui extends Application {
 
 	private Scene prepareScene(Node sourceNode) {
 		BorderPane toolPane = new BorderPane();
+		toolPane.setRight(buildControls());
 		toolPane.setMinHeight(30.0d);
 		toolPane.setStyle("-fx-background-color:#444444");
 		toolPane.setOnMousePressed(event -> {
@@ -287,5 +454,27 @@ public class EinkaufslisteGui extends Application {
 		BorderPane sceneCore = new BorderPane(sourceNode);
 		sceneCore.setTop(toolPane);
 		return new Scene(sceneCore);
+	}
+
+	private Node buildControls() {
+		return new HBox(buildMinimizeButton(),buildCloseButton());
+	}
+
+	private Node buildMinimizeButton() {
+		Button    minimize = new Button();
+		ImageView graphic  = new ImageView(new Image("file:Pictures/-.png", 30d, 30d, false, false));
+		minimize.setGraphic(graphic);
+		minimize.setOnAction(event -> window.setIconified(true));
+		minimize.setBackground(Background.EMPTY);
+		return minimize;
+	}
+
+	private Button buildCloseButton() {
+		Button close = new Button();
+		ImageView value = new ImageView(new Image("file:Pictures/black-circle-close-button-png-5.png",30d,30d,false,false));
+		close.setGraphic(value);
+		close.setOnAction(event -> window.close());
+		close.setBackground(Background.EMPTY);
+		return close;
 	}
 }
